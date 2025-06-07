@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.fft as fft # Import fft explicitly for clarity
 
 def kinetic_energy_operator(g_squared):
     """
@@ -41,4 +42,50 @@ def external_potential(r_coords, Z=1.0):
 
     V_ext = -Z / r_magnitudes_safe
     return V_ext
+
+def hartree_potential(density_r, L, N):
+    """
+    Calculates the Hartree potential V_H(r) from the electron density n(r)
+    using Fourier transforms.
+
+    V_H(G) = (4 * pi / G^2) * n(G) for G != 0
+    V_H(G=0) = 0 (convention for periodic systems, setting average potential to zero)
+
+    Args:
+        density_r (np.ndarray): Electron density in real space (N, N, N).
+        L (float): Length of the cubic simulation box in Bohr.
+        N (int): Number of grid points along each dimension.
+
+    Returns:
+        np.ndarray: Hartree potential in real space (N, N, N).
+    """
+    # 1. Fourier Transform the real-space density to reciprocal space
+    density_g = fft.fftn(density_r)
+
+    # 2. Reconstruct the full G-vector grid for the Coulomb kernel
+    # These are the frequencies for FFT, scaled by 2*pi/L to get G-vectors
+    freq_x = fft.fftfreq(N, d=L/N) * 2 * np.pi
+    freq_y = fft.fftfreq(N, d=L/N) * 2 * np.pi
+    freq_z = fft.fftfreq(N, d=L/N) * 2 * np.pi
+
+    GX, GY, GZ = np.meshgrid(freq_x, freq_y, freq_z, indexing='ij')
+    g_squared_full = GX**2 + GY**2 + GZ**2
+
+    # 3. Calculate the Coulomb kernel in reciprocal space: 4*pi / G^2
+    # Initialize with zeros. The G=0 term will remain zero.
+    coulomb_kernel_g = np.zeros_like(g_squared_full)
+    
+    # Apply 4*pi / G^2 for all non-zero G-vectors.
+    # This correctly handles the G=0 term by leaving it as 0.
+    non_zero_g_mask = g_squared_full != 0
+    coulomb_kernel_g[non_zero_g_mask] = 4 * np.pi / g_squared_full[non_zero_g_mask]
+
+    # 4. Multiply density_g by the Coulomb kernel to get V_H(G)
+    V_H_g = coulomb_kernel_g * density_g
+
+    # 5. Inverse Fourier Transform back to real space
+    V_H_r = fft.ifftn(V_H_g)
+
+    # The Hartree potential must be real. Return the real part.
+    return V_H_r.real
 
