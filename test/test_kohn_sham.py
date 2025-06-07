@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
-from kohn_sham import kinetic_energy_operator, external_potential
-from grid import setup_real_space_grid # Import setup_real_space_grid for testing V_ext
+from kohn_sham import kinetic_energy_operator, external_potential, hartree_potential
+from grid import setup_real_space_grid # Import setup_real_space_grid for testing V_ext and V_H
 
 def test_kinetic_energy_operator():
     # Test with a simple G-squared array
@@ -67,4 +67,33 @@ def test_external_potential():
     expected_V_at_1_1_1 = -Z / np.linalg.norm(r_coords[1,1,1])
     np.testing.assert_allclose(V_ext[1, 1, 1], expected_V_at_1_1_1)
     assert V_ext[1, 1, 1] == -1.0 / np.sqrt(3)
+
+def test_hartree_potential_constant_density():
+    # Define a small grid
+    L = 4.0
+    N = 4
+    r_coords, dr = setup_real_space_grid(L, N)
+
+    # Create a constant electron density normalized to 1 electron
+    # Total volume = L^3
+    # Density = 1 electron / L^3
+    constant_density = 1.0 / (L**3)
+    density_r = np.full((N, N, N), constant_density)
+
+    # Calculate Hartree potential
+    V_H = hartree_potential(density_r, L, N)
+
+    # Assert shape and dtype
+    assert V_H.shape == (N, N, N)
+    assert V_H.dtype == np.float64
+
+    # For a constant density in a periodic box, the Hartree potential should be zero everywhere
+    # because n(G=0) is explicitly set to 0 in V_H(G) and n(G!=0) are all 0.
+    np.testing.assert_allclose(V_H, np.zeros((N, N, N)), atol=1e-9) # Use a small tolerance for floating point errors
+
+    # Test with a different constant density
+    constant_density_2 = 2.5 / (L**3)
+    density_r_2 = np.full((N, N, N), constant_density_2)
+    V_H_2 = hartree_potential(density_r_2, L, N)
+    np.testing.assert_allclose(V_H_2, np.zeros((N, N, N)), atol=1e-9)
 
