@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from kohn_sham import kinetic_energy_operator, external_potential, hartree_potential
+from kohn_sham import kinetic_energy_operator, external_potential, hartree_potential, exchange_correlation_potential_lda # Import new function
 from grid import setup_real_space_grid # Import setup_real_space_grid for testing V_ext and V_H
 
 def test_kinetic_energy_operator():
@@ -97,3 +97,44 @@ def test_hartree_potential_constant_density():
     V_H_2 = hartree_potential(density_r_2, L, N)
     np.testing.assert_allclose(V_H_2, np.zeros((N, N, N)), atol=1e-9)
 
+def test_exchange_correlation_potential_lda():
+    # Define a small grid
+    N = 4
+    
+    # Test with a constant density
+    constant_density = 0.125 # Arbitrary constant density
+    density_r_constant = np.full((N, N, N), constant_density)
+
+    # Analytical expected V_xc for a constant density n: V_x = - (3/pi)^(1/3) * n^(1/3)
+    expected_V_xc_constant = - (3.0 / np.pi)**(1.0/3.0) * (constant_density**(1.0/3.0))
+    
+    V_xc_calculated = exchange_correlation_potential_lda(density_r_constant)
+
+    # Assert shape and dtype
+    assert V_xc_calculated.shape == (N, N, N)
+    assert V_xc_calculated.dtype == np.float64
+
+    # All values should be equal to the expected constant value
+    np.testing.assert_allclose(V_xc_calculated, np.full((N, N, N), expected_V_xc_constant))
+
+    # Test with a density that includes zero (or near-zero) values
+    # The function should handle this by using the epsilon (1e-15)
+    density_r_with_zero = np.array([[[0.0, 0.1], [0.2, 0.3]], [[0.4, 0.5], [0.6, 0.7]]])
+    # Reshape to (N,N,N) for N=2
+    density_r_with_zero = np.pad(density_r_with_zero, ((0,2),(0,2),(0,2)), 'constant', constant_values=0)
+    
+    # Manually calculate expected values, applying the 1e-15 safety
+    density_safe = np.maximum(density_r_with_zero, 1e-15)
+    expected_V_xc_with_zero = - (3.0 / np.pi)**(1.0/3.0) * (density_safe**(1.0/3.0))
+
+    V_xc_calculated_with_zero = exchange_correlation_potential_lda(density_r_with_zero)
+    
+    np.testing.assert_allclose(V_xc_calculated_with_zero, expected_V_xc_with_zero)
+
+    # Test with a slightly varying density
+    density_r_varying = np.linspace(0.01, 0.5, N*N*N).reshape((N, N, N))
+    density_safe_varying = np.maximum(density_r_varying, 1e-15)
+    expected_V_xc_varying = - (3.0 / np.pi)**(1.0/3.0) * (density_safe_varying**(1.0/3.0))
+    
+    V_xc_calculated_varying = exchange_correlation_potential_lda(density_r_varying)
+    np.testing.assert_allclose(V_xc_calculated_varying, expected_V_xc_varying)
