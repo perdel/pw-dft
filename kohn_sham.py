@@ -89,3 +89,27 @@ def hartree_potential(density_r, L, N):
     # The Hartree potential must be real. Return the real part.
     return V_H_r.real
 
+def exchange_correlation_potential_lda(density_r):
+    """
+    Calculates the exchange-correlation potential V_xc(r) using the Local Density Approximation (LDA).
+    For simplicity, this implementation uses the exchange-only part for a uniform electron gas.
+
+    V_x(r) = - (3/pi)^(1/3) * n(r)^(1/3)
+
+    Args:
+        density_r (np.ndarray): Electron density in real space (N, N, N).
+
+    Returns:
+        np.ndarray: Exchange-correlation potential in real space (N, N, N).
+    """
+    # Ensure density is non-negative and add a small epsilon to avoid issues with 0^(1/3)
+    # For physical densities, n(r) >= 0.
+    density_safe = np.maximum(density_r, 1e-15) # Small positive value
+
+    # Calculate the exchange potential V_x(r)
+    # Constant factor: (3/pi)^(1/3)
+    constant_factor = (3.0 / np.pi)**(1.0/3.0)
+    
+    V_xc = -constant_factor * (density_safe**(1.0/3.0))
+    
+    return V_xc

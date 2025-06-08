@@ -1,6 +1,6 @@
 import numpy as np
 from grid import setup_real_space_grid, setup_reciprocal_space_grid
-from kohn_sham import kinetic_energy_operator, external_potential, hartree_potential # Import hartree_potential
+from kohn_sham import kinetic_energy_operator, external_potential, hartree_potential, exchange_correlation_potential_lda # Import new function
 
 def main():
     # --- Simulation Parameters ---
@@ -60,9 +60,16 @@ def main():
     print(f"Average Hartree potential: {np.mean(V_H):.4f} Hartree (should be close to 0 due to G=0 handling).")
     # print(f"Shape of V_H: {V_H.shape}") # (N, N, N)
 
+    # --- 6. Calculate Exchange-Correlation Potential (LDA) ---
+    V_xc = exchange_correlation_potential_lda(dummy_density_r_normalized)
+    print(f"\nExchange-correlation potential (LDA, exchange-only) calculated using dummy density.")
+    print(f"Min V_xc: {np.min(V_xc):.4f} Hartree.")
+    print(f"Max V_xc: {np.max(V_xc):.4f} Hartree.")
+    print(f"Average V_xc: {np.mean(V_xc):.4f} Hartree.")
+    # print(f"Shape of V_xc: {V_xc.shape}") # (N, N, N)
+
     # --- Next steps will involve setting up potentials and the self-consistency loop ---
     print("\nInitial setup complete. Ready for potential implementations and Kohn-Sham solver.")
 
 if __name__ == '__main__':
     main()
-
